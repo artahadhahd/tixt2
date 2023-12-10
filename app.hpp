@@ -22,18 +22,36 @@ enum class DirectoryFilterBy : int8_t {
     SymLink = DT_LNK
 };
 
+struct Cursor {
+    std::string shape, delete_shape{};
+    usize x, y, xmin, xmax, ymin, ymax;
+    WINDOW * win;
+    void moveUp();
+    void moveDown();
+    void moveLeft();
+    void moveRight();
+    void render();
+private:
+    void delete_previous(int);
+    void create_delete_shape();
+};
+
+
 void exit_from_ncurses(std::function<void()>);
 
 class NcursesApp {
     struct sigaction SIGWINCH_handler;
-    [[nodiscard]]
-    std::optional<std::vector<std::string>> getFiles(const char *, DirectoryFilterBy);
-    void printFiles(const std::vector<std::string>);
+    usize cursor_pos = 0;
+    Cursor cursor;
 public:
     NcursesApp();
     ~NcursesApp();
 
     int run(const int argc, char ** argv);
+private:
+    [[nodiscard]]
+    std::optional<std::vector<std::string>> getFiles(const char *, DirectoryFilterBy);
+    void printFiles(const std::vector<std::string>);
 };
 
 #endif
