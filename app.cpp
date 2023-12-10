@@ -9,8 +9,8 @@ static struct {
         if (ioctl(0, TIOCGWINSZ, &size) < 0) {
             return true;
         }
-        this->y = size.ws_col;
-        this->x = size.ws_row;
+        this->x = size.ws_col;
+        this->y = size.ws_row;
         return false;
     }
 } global_terminal_size = {
@@ -103,8 +103,9 @@ void exit_from_ncurses(std::function<void()> after)
 void NcursesApp::printFiles(const std::vector<std::string> in)
 {
     clear();
-    for (usize i = 0; i < global_terminal_size.y && i < in.size(); ++i) {
-        printw("%s\n", in[i].c_str());
-        refresh();
+    usize y = 0;
+    while (y < in.size() && y < global_terminal_size.y) {
+        mvprintw(y, 1, "%s", in[y].c_str());
+        ++y;
     }
 }
