@@ -1,7 +1,7 @@
 #include "app.hpp"
 
 static struct {
-    usize y = 0, x = 0;
+    usize y, x;
     struct winsize size {};
     /* Returns `true` on failure */
     [[nodiscard]] bool update()
@@ -17,6 +17,18 @@ static struct {
     0, 0
 };
 
+// copied from
+// https://stackoverflow.com/questions/13445688/how-to-generate-a-random-number-in-c
+// seems to work well
+static int random_number(int s, int e)
+{
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<std::mt19937::result_type> dist(s, e);
+    return dist(rng);
+}
+
+#define RANDOM_COLOR random_number(1, 6)
 
 void onTerminalResize([[maybe_unused]] int)
 {
@@ -36,10 +48,13 @@ NcursesApp::NcursesApp()
     raw();
     noecho();
     keypad(stdscr, TRUE);
-    // hide the cursor
-    curs_set(0);
+    if (has_colors()) {
+        start_color();
+        use_default_colors();
+    }
+    // Without this, ctrl+j would be treated as a new line
+    nonl();
     SIGWINCH_handler.__sigaction_handler.sa_handler = onTerminalResize;
-    // Prevents the app from exiting when terminal resizes.
     signal(SIGWINCH, SIGWINCH_handler.__sigaction_handler.sa_handler);
     global_terminal_size.y = LINES;
     global_terminal_size.x = COLS;
@@ -49,6 +64,8 @@ NcursesApp::NcursesApp()
     cursor.x = 1;
     cursor.y = 0;
     cursor.ymin = 0;
+    cursor.hideNcursesCursor(true);
+    cursor.setColor(RANDOM_COLOR);
 }
 
 NcursesApp::~NcursesApp()
@@ -70,19 +87,28 @@ int NcursesApp::run(const int argc, char ** argv)
         const auto files = files_in_directory.value();
         int ch = 0;
         cursor.ymax = files.size();
+        cursor.bottom = cursor.ymax - 1;
         do {
             printFiles(files);
             switch (ch) {
+            case KEY_ENTER:
+                break;
+            case ctrl('j'):
             case KEY_DOWN:
-                cursor.moveDown();
+                cursor.moveDown(1);
                 break;
+            case ctrl('k'):
             case KEY_UP:
-                cursor.moveUp();
+                cursor.moveUp(1);
                 break;
+            case ctrl('c'):
+                cursor.toggleWrap();
+                break;
+            default:
+                cursor.setColor(RANDOM_COLOR);
             }
-            
             cursor.render();
-        } while ((ch = getch()) != KEY_BACKSPACE);
+        } while ((ch = getch()) != KEY_BACKSPACE && ch != ctrl('q'));
     } else {
         exit_from_ncurses([] { std::cerr << "no such resource"; });
         return 1;
@@ -108,6 +134,7 @@ std::optional<std::vector<std::string>> NcursesApp::getFiles(const char * path, 
         }
     }
     closedir(d);
+    std::sort(out.begin(), out.end());
     return out;
 }
 
@@ -124,10 +151,19 @@ void exit_from_ncurses(std::function<void()> after)
 void NcursesApp::printFiles(const std::vector<std::string> in)
 {
     clear();
+    // usize actual_render;
+    // while ((size_t) y < in.size() && y < global_terminal_size.y) {
+    //     if (y > renderIndex) {
+    //         mvprintw(y, 2, "%s", in[y].c_str());
+    //     }
+    //     ++y;
+    // }
     usize y = 0;
-    while (y < in.size() && y < global_terminal_size.y) {
-        mvprintw(y, 2, "%s", in[y].c_str());
-        ++y;
+    for (size_t i = renderIndex; i < in.size(); ++i) {
+        if (y < global_terminal_size.y) {
+            mvprintw(y, 2, "%s", in.at(i).c_str());
+            ++y;
+        }
     }
 }
 
@@ -135,24 +171,33 @@ void NcursesApp::printFiles(const std::vector<std::string> in)
 
 void Cursor::render()
 {
+    wattron(win, COLOR_PAIR(CURSOR_COLOR_PAIR));
     mvwprintw(win, y, x, "%s", shape.c_str());
+    wattroff(win, COLOR_PAIR(CURSOR_COLOR_PAIR));
     refresh();
 }
 
-void Cursor::moveUp()
+void Cursor::moveUp(int amount)
 {
-    if (y > ymin) {
-        --y;
-        render();
+    if (y - amount > ymin - 1) {
+        y -= amount;
+    } else if (wrap) {
+        y = std::min(ymax, global_terminal_size.y) - 1;
     }
+    render();
 }
 
-void Cursor::moveDown()
+void Cursor::moveDown(int amount)
 {
-    if (y + 1 < ymax && y + 1 < global_terminal_size.y) {
-        ++y;
-        render();
+    if (y + amount < ymax && y + amount < global_terminal_size.y) {
+        y += amount;
+    } 
+    else {
+        if (wrap) {
+            y = ymin;
+        }
     }
+    render();
 }
 
 void Cursor::delete_previous(int at)
@@ -172,3 +217,29 @@ void Cursor::create_delete_shape()
 
 void Cursor::moveLeft() {}
 void Cursor::moveRight() {}
+
+void Cursor::hideNcursesCursor(bool on)
+{
+    curs_set(!on);
+}
+
+void Cursor::setColor(int color)
+{
+    init_pair(CURSOR_COLOR_PAIR, color, DEFAULT_COLOR);
+    this->color = color;
+}
+
+void Cursor::setWrap(bool on)
+{
+    this->wrap = on;
+}
+
+void Cursor::toggleWrap()
+{
+    this->wrap = !this->wrap;
+}
+
+// void Cursor::onHitBottom(std::function<void()> f)
+// {
+//     this->on_hit = f;
+// }
