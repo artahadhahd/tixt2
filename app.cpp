@@ -42,6 +42,13 @@ void onTerminalResize([[maybe_unused]] int)
     refresh();
 }
 
+static void initColor()
+{
+    init_pair(FILE_COLOR_PAIR, COLOR_WHITE, DEFAULT_COLOR);
+    init_pair(SYMLINK_COLOR_PAIR, COLOR_CYAN, DEFAULT_COLOR);
+    init_pair(DIR_COLOR_PAIR, COLOR_BLUE, DEFAULT_COLOR);
+}
+
 NcursesApp::NcursesApp()
 {
     initscr();
@@ -51,6 +58,7 @@ NcursesApp::NcursesApp()
     if (has_colors()) {
         start_color();
         use_default_colors();
+        initColor();
     }
     // Without this, ctrl+j would be treated as a new line
     nonl();
@@ -82,14 +90,23 @@ int NcursesApp::run(const int argc, char ** argv)
         return 1;
     }
     
-    auto files_in_directory = getFiles(argc == 1 ? "." : argv[1], DirectoryFilterBy::File);
-    if (files_in_directory) {
-        const auto files = files_in_directory.value();
+    const char * path = argc == 1 ? "." : argv[1];
+    auto directories_in_dir = getFiles(path, DirectoryFilterBy::Directory);
+    auto files_in_directory = getFiles(path, DirectoryFilterBy::File);
+    if (files_in_directory && directories_in_dir) {
+        auto dirs = directories_in_dir.value();
+        {
+            const auto files = files_in_directory.value();
+            dirs.insert(dirs.end(), files.begin(), files.end());
+        }
+        std::sort(dirs.begin(), dirs.end(), [] (const File &left, const File &right) {
+            return left.name.compare(right.name) && left.filter < right.filter;
+        });
         int ch = 0;
-        cursor.ymax = files.size();
+        cursor.ymax = dirs.size();
         cursor.bottom = cursor.ymax - 1;
         do {
-            printFiles(files);
+            printFiles(dirs);
             switch (ch) {
             case KEY_ENTER:
                 break;
@@ -116,25 +133,24 @@ int NcursesApp::run(const int argc, char ** argv)
     return 0;
 }
 
-std::optional<std::vector<std::string>> NcursesApp::getFiles(const char * path, DirectoryFilterBy filter)
+std::optional<std::vector<File>> NcursesApp::getFiles(const char * path, DirectoryFilterBy filter)
 {
     DIR * d = opendir(path);
     struct dirent * dir;
     if (!d) {
         return std::nullopt;
     }
-    std::vector<std::string> out;
+    std::vector<File> out;
     while ((dir = readdir(d)) != NULL) {
-        if (filter == DirectoryFilterBy::None) {
-            out.push_back(dir->d_name);
-        } else {
-            if ((uint8_t)filter == dir->d_type) {
-                out.push_back(dir->d_name);
-            }
+        if ((uint8_t)filter == dir->d_type && strcmp(dir->d_name, "..") && strcmp(dir->d_name, ".")) {
+            out.push_back(
+            File {
+                .name = dir->d_name,
+                .filter = filter
+            });
         }
     }
     closedir(d);
-    std::sort(out.begin(), out.end());
     return out;
 }
 
@@ -148,22 +164,14 @@ void exit_from_ncurses(std::function<void()> after)
     after();
 }
 
-void NcursesApp::printFiles(const std::vector<std::string> in)
+void NcursesApp::printFiles(const std::vector<File> in)
 {
     clear();
-    // usize actual_render;
-    // while ((size_t) y < in.size() && y < global_terminal_size.y) {
-    //     if (y > renderIndex) {
-    //         mvprintw(y, 2, "%s", in[y].c_str());
-    //     }
-    //     ++y;
-    // }
-    usize y = 0;
-    for (size_t i = renderIndex; i < in.size(); ++i) {
-        if (y < global_terminal_size.y) {
-            mvprintw(y, 2, "%s", in.at(i).c_str());
-            ++y;
-        }
+    for (size_t i = 0; i < in.size(); ++i) {
+        auto filter = (int)in[i].filter;
+        attron(COLOR_PAIR(filter));
+        mvprintw(i, 2, "%s", in[i].name.c_str());
+        attroff(COLOR_PAIR(filter));
     }
 }
 
@@ -200,21 +208,6 @@ void Cursor::moveDown(int amount)
     render();
 }
 
-void Cursor::delete_previous(int at)
-{
-    create_delete_shape();
-    mvwprintw(win, at, x, "%s", delete_shape.c_str());
-}
-
-void Cursor::create_delete_shape()
-{
-    if (delete_shape.size() == 0) {
-        for ([[maybe_unused]] auto _ : shape) {
-            delete_shape += ' ';
-        }
-    }
-}
-
 void Cursor::moveLeft() {}
 void Cursor::moveRight() {}
 
@@ -238,8 +231,3 @@ void Cursor::toggleWrap()
 {
     this->wrap = !this->wrap;
 }
-
-// void Cursor::onHitBottom(std::function<void()> f)
-// {
-//     this->on_hit = f;
-// }

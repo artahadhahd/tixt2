@@ -13,9 +13,13 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <cstring>
 
-#define CURSOR_COLOR_PAIR   1
 #define DEFAULT_COLOR      -1
+#define CURSOR_COLOR_PAIR   1
+#define SYMLINK_COLOR_PAIR  DT_LNK
+#define DIR_COLOR_PAIR      DT_DIR
+#define FILE_COLOR_PAIR     DT_REG
 
 #define ctrl(key) (key & 31)
 
@@ -42,8 +46,6 @@ struct Cursor {
     void setWrap(bool);
     void toggleWrap();
 private:
-    void delete_previous(int);
-    void create_delete_shape();
     int color = COLOR_WHITE;
     bool wrap = false;
     std::function<void()> on_hit = [] {};
@@ -51,6 +53,11 @@ private:
 
 
 void exit_from_ncurses(std::function<void()>);
+
+struct File {
+    std::string name;
+    DirectoryFilterBy filter;
+};
 
 class NcursesApp {
     struct sigaction SIGWINCH_handler;
@@ -64,8 +71,8 @@ public:
 private:
     int renderIndex = 0;
     [[nodiscard]]
-    std::optional<std::vector<std::string>> getFiles(const char *, DirectoryFilterBy);
-    void printFiles(const std::vector<std::string>);
+    std::optional<std::vector<File>> getFiles(const char *, DirectoryFilterBy);
+    void printFiles(const std::vector<File>);
 };
 
 #endif
