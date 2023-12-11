@@ -104,14 +104,20 @@ int NcursesApp::run(const int argc, char ** argv)
         int ch = 0;
         cursor.ymax = dirs.size();
         cursor.bottom = cursor.ymax - 1;
+        printFiles(dirs);
         do {
-            printFiles(dirs);
             switch (ch) {
             case KEY_ENTER:
                 break;
             case ctrl('j'):
             case KEY_DOWN:
-                cursor.moveDown(1);
+                if (cursor.y > global_terminal_size.y / 2 && cursor.y < (usize)dirs.size() - global_terminal_size.y / 2) {
+                    ++renderIndex;
+                    // ++cursor.y;
+                    printFiles(dirs);
+                } else {
+                    cursor.moveDown(1);
+                }
                 break;
             case ctrl('k'):
             case KEY_UP:
@@ -149,6 +155,11 @@ std::optional<std::vector<File>> NcursesApp::getFiles(const char * path, Directo
             });
         }
     }
+    if (filter == DirectoryFilterBy::Directory) {
+        for (auto &e : out) {
+            e.name += "/";
+        }
+    }
     closedir(d);
     return out;
 }
@@ -166,12 +177,15 @@ void exit_from_ncurses(std::function<void()> after)
 void NcursesApp::printFiles(const std::vector<File> in)
 {
     clear();
-    for (size_t i = 0; i < in.size(); ++i) {
+    usize y = 0;
+    for (size_t i = renderIndex; i < in.size(); ++i) {
+    if (y < global_terminal_size.y) {
         auto filter = (int)in[i].filter;
         attron(COLOR_PAIR(filter));
-        mvprintw(i, 2, "%s", in[i].name.c_str());
+        mvprintw(y, 2, "%s", in.at(i).name.c_str());
         attroff(COLOR_PAIR(filter));
-    }
+        ++y;
+    }}
 }
 
 // CURSOR
@@ -186,16 +200,18 @@ void Cursor::render()
 
 void Cursor::moveUp(int amount)
 {
+    delete_previous(y);
     if (y - amount > ymin - 1) {
         y -= amount;
     } else if (wrap) {
         y = std::min(ymax, global_terminal_size.y) - 1;
     }
-    render();
+    // render();
 }
 
 void Cursor::moveDown(int amount)
 {
+    delete_previous(y);
     if (y + amount < ymax && y + amount < global_terminal_size.y) {
         y += amount;
     } 
@@ -204,7 +220,6 @@ void Cursor::moveDown(int amount)
             y = ymin;
         }
     }
-    render();
 }
 
 void Cursor::moveLeft() {}
@@ -229,4 +244,18 @@ void Cursor::setWrap(bool on)
 void Cursor::toggleWrap()
 {
     this->wrap = !this->wrap;
+}
+
+void Cursor::delete_previous(int at)
+{
+    create_delete_shape();
+    mvwprintw(win, at, x, "%s", delete_shape.c_str());
+}
+void Cursor::create_delete_shape()
+{
+    if (delete_shape.size() == 0) {
+        for ([[maybe_unused]] auto _ : shape) {
+            delete_shape += ' ';
+        }
+    }
 }

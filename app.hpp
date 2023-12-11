@@ -45,6 +45,8 @@ struct Cursor {
     void setColor(int);
     void setWrap(bool);
     void toggleWrap();
+    void delete_previous(int);
+    void create_delete_shape();
 private:
     int color = COLOR_WHITE;
     bool wrap = false;
