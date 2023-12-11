@@ -57,6 +57,9 @@ void exit_from_ncurses(std::function<void()>);
 struct File {
     std::string name;
     DirectoryFilterBy filter;
+    friend bool operator<(const File &lhs, const File &rhs) {
+        return lhs.name < rhs.name;
+    }
 };
 
 class NcursesApp {

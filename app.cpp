@@ -96,12 +96,11 @@ int NcursesApp::run(const int argc, char ** argv)
     if (files_in_directory && directories_in_dir) {
         auto dirs = directories_in_dir.value();
         {
-            const auto files = files_in_directory.value();
+            auto files = files_in_directory.value();
+            std::sort(files.begin(), files.end());
+            std::sort(dirs.begin(), dirs.end());
             dirs.insert(dirs.end(), files.begin(), files.end());
         }
-        std::sort(dirs.begin(), dirs.end(), [] (const File &left, const File &right) {
-            return left.name.compare(right.name) && left.filter < right.filter;
-        });
         int ch = 0;
         cursor.ymax = dirs.size();
         cursor.bottom = cursor.ymax - 1;
