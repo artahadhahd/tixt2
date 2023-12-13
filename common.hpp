@@ -6,13 +6,13 @@
 #undef sa_handler
 #include <sys/ioctl.h>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <optional>
 #include <random>
 #include <string>
 #include <vector>
-#include <cstring>
 
 
 #define DEFAULT_COLOR      -1
@@ -28,18 +28,13 @@ int random_number(int s, int e);
 
 extern struct TERMINAL {
     usize y, x;
-    bool resized = false;
+    bool resized = true;
     struct winsize size {};
     /* Returns `true` on failure */
-    [[nodiscard]] bool update()
-    {
-        if (ioctl(0, TIOCGWINSZ, &size) < 0) {
-            return true;
-        }
-        this->x = size.ws_col;
-        this->y = size.ws_row;
-        return false;
-    }
+    [[nodiscard]] bool update();
 } global_terminal;
+
+extern std::vector<std::function<void()>> renderQueue;
+void render();
 
 #endif

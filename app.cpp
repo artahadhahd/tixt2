@@ -10,6 +10,7 @@ void onTerminalResize([[maybe_unused]] int)
         });
     }
     global_terminal.resized = true;
+    render();
     refresh();
 }
 
@@ -73,15 +74,14 @@ int NcursesApp::run(const int argc, char ** argv)
             dirs.insert(dirs.end(), files.begin(), files.end());
         }
         int ch = 0;
-        cursor.ymax = dirs.size();
+        cursor.ymax = dirs.size() / 2;
         cursor.bottom = cursor.ymax - 1;
-        printFiles(dirs);
+        renderQueue.push_back([this, &dirs] {
+            this->printFiles(dirs);
+            cursor.render();
+        });
+        render();
         do {
-            if (global_terminal.resized) {
-                terminalResizeEvent([this, &dirs] {
-                    printFiles(dirs);
-                });
-            }
             switch (ch) {
             case KEY_ENTER:
                 break;
@@ -162,10 +162,4 @@ void NcursesApp::printFiles(const std::vector<File> in)
         attroff(COLOR_PAIR(filter));
         ++y;
     }}
-}
-
-void NcursesApp::terminalResizeEvent(std::function<void()> f)
-{
-    global_terminal.resized = false;
-    f();
 }

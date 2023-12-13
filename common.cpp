@@ -1,4 +1,8 @@
 #include "common.hpp"
+
+TERMINAL global_terminal = {0, 0};
+std::vector<std::function<void()>> renderQueue;
+
 int random_number(int s, int e)
 {
     std::random_device dev;
@@ -7,4 +11,19 @@ int random_number(int s, int e)
     return dist(rng);
 }
 
-TERMINAL global_terminal = {0, 0};
+bool TERMINAL::update()
+{
+    if (ioctl(0, TIOCGWINSZ, &size) < 0) {
+        return true;
+    }
+    this->x = size.ws_col;
+    this->y = size.ws_row;
+    return false;
+}
+
+void render()
+{
+    for (auto f : renderQueue) {
+        f();
+    }
+}

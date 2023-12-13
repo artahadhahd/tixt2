@@ -29,12 +29,11 @@ class NcursesApp {
     usize cursor_pos = 0;
     Cursor cursor;
 public:
-    NcursesApp();
+    explicit NcursesApp();
     ~NcursesApp();
 
     int run(const int, char **);
 private:
-    void terminalResizeEvent(std::function<void()>);
     int renderIndex = 0;
     [[nodiscard]]
     std::optional<std::vector<File>> getFiles(const char *, DirectoryFilterBy);
