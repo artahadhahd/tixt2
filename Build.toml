@@ -1,0 +1,15 @@
+# This is please, my build system
+[project]
+name = "tixt"
+version = "0.2.0"
+type = "app"
+
+[build]
+sources = ["main.cpp", "app.cpp", "common.cpp", "cursor.cpp"]
+include = ["."]
+objects = true
+compiler = "g++"
+warnings = 2
+
+[build.dependencies]
+local = ["ncurses"]
