@@ -16,20 +16,23 @@
 #include <filesystem>
 namespace fs = std::filesystem;
 
+enum : std::int8_t {
+    DEFAULT_COLOR = -1,
+    CURSOR_COLOR_PAIR = 1,
+    KEY_RETURN = 13,
+    SYMLINK_COLOR_PAIR = DT_LNK,
+    DIR_COLOR_PAIR = DT_DIR,
+    FILE_COLOR_PAIR = DT_REG
+};
 
-#define DEFAULT_COLOR      -1
-#define CURSOR_COLOR_PAIR   1
-#define SYMLINK_COLOR_PAIR  DT_LNK
-#define DIR_COLOR_PAIR      DT_DIR
-#define FILE_COLOR_PAIR     DT_REG
-#define KEY_RETURN          13
-
-#define ctrl(key) (key & 31)
+constexpr int ctrl(const int key)
+{
+    return key & 31;
+}
 
 using usize = signed long long int;
 
 int random_number(int s, int e);
-// #define RANDOM_COLOR random_number(1, 6)
 
 extern struct TERMINAL {
     usize y, x;

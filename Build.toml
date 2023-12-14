@@ -9,7 +9,7 @@ sources = ["main.cpp", "app.cpp", "common.cpp", "cursor.cpp", "manager.cpp"]
 include = ["."]
 objects = true
 compiler = "g++"
-warnings = 2
+warnings = 3
 
 [build.dependencies]
 local = ["ncurses"]
