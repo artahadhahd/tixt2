@@ -5,7 +5,7 @@ version = "0.2.0"
 type = "app"
 
 [build]
-sources = ["main.cpp", "app.cpp", "common.cpp", "cursor.cpp"]
+sources = ["main.cpp", "app.cpp", "common.cpp", "cursor.cpp", "manager.cpp"]
 include = ["."]
 objects = true
 compiler = "g++"

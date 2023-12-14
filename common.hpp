@@ -13,6 +13,8 @@
 #include <random>
 #include <string>
 #include <vector>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 
 #define DEFAULT_COLOR      -1
@@ -20,6 +22,9 @@
 #define SYMLINK_COLOR_PAIR  DT_LNK
 #define DIR_COLOR_PAIR      DT_DIR
 #define FILE_COLOR_PAIR     DT_REG
+#define KEY_RETURN          13
+
+#define ctrl(key) (key & 31)
 
 using usize = signed long long int;
 
@@ -36,5 +41,6 @@ extern struct TERMINAL {
 
 extern std::vector<std::function<void()>> renderQueue;
 void render();
+void exit_from_ncurses(std::function<void()>);
 
 #endif

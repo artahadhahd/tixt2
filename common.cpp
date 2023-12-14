@@ -27,3 +27,14 @@ void render()
         f();
     }
 }
+
+// Assume we are still in NCURSES
+void exit_from_ncurses(std::function<void()> after)
+{
+    clear();
+    refresh();
+    endwin();
+    std::cout << "tixt: ";
+    after();
+    exit(1);
+}

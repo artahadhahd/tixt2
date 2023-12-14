@@ -17,15 +17,16 @@ void Cursor::moveUp(int amount)
     } else if (wrap) {
         y = std::min(ymax, global_terminal.y) - 1;
     }
-    // render();
 }
+
+int curry = 0;
 
 void Cursor::moveDown(int amount)
 {
     delete_previous(y);
-    if (y + amount < ymax && y + amount < global_terminal.y) {
+    if (y + amount + curry < ymax && y + amount + curry < global_terminal.y) {
         y += amount;
-    } 
+    }
     else {
         if (wrap) {
             y = ymin;
@@ -62,6 +63,7 @@ void Cursor::delete_previous(int at)
     create_delete_shape();
     mvwprintw(win, at, x, "%s", delete_shape.c_str());
 }
+
 void Cursor::create_delete_shape()
 {
     if (delete_shape.size() == 0) {
@@ -69,4 +71,9 @@ void Cursor::create_delete_shape()
             delete_shape += ' ';
         }
     }
+}
+
+void Cursor::clamp()
+{
+    y = std::min(y, global_terminal.y);
 }
